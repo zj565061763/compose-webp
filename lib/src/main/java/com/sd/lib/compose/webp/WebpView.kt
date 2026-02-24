@@ -2,7 +2,6 @@ package com.sd.lib.compose.webp
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -21,16 +20,12 @@ fun WebpView(
 
   if (LocalInspectionMode.current) {
     val resId = previewResId.takeIf { it != 0 } ?: (controller as? WebpControllerResource)?.resId
-    if (resId != null) {
-      Image(
-        modifier = modifier,
-        painter = painterResource(resId),
-        contentDescription = contentDescription,
-        contentScale = contentScale,
-      )
-    } else {
-      Box(modifier = modifier)
-    }
+    Image(
+      modifier = modifier,
+      painter = if (resId != null) painterResource(resId) else EmptyPainter,
+      contentDescription = contentDescription,
+      contentScale = contentScale,
+    )
     return
   }
 
