@@ -23,7 +23,7 @@ internal open class WebpControllerImpl : WebpController {
   private var _drawable by mutableStateOf<CustomWebPDrawable?>(null)
 
   @Volatile
-  private var _shouldPlay = true
+  private var _shouldPlay = false
 
   @Volatile
   private var _loopCount = 0
@@ -33,9 +33,8 @@ internal open class WebpControllerImpl : WebpController {
   }
 
   fun setDrawable(drawable: CustomWebPDrawable?) {
-    val oldDrawable = _drawable
-    if (oldDrawable != drawable) {
-      oldDrawable?.stop()
+    if (_drawable != drawable) {
+      _drawable?.stop()
       _drawable = drawable
       updatePlayState()
     }
@@ -65,7 +64,7 @@ internal open class WebpControllerImpl : WebpController {
     if (_shouldPlay) {
       _drawable?.start()
     } else {
-      _drawable?.stop()
+      _drawable?.stopAtFirstFrame()
     }
   }
 }

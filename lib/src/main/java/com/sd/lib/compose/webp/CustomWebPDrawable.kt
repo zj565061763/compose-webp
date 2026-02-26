@@ -1,53 +1,53 @@
 package com.sd.lib.compose.webp
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import com.github.penfeizhou.animation.FrameAnimationDrawable
-import com.github.penfeizhou.animation.decode.FrameSeqDecoder
+import com.github.penfeizhou.animation.decode.Frame
 import com.github.penfeizhou.animation.decode.FrameSeqDecoder.RenderListener
 import com.github.penfeizhou.animation.loader.Loader
 import com.github.penfeizhou.animation.loader.ResourceStreamLoader
 import com.github.penfeizhou.animation.webp.decode.WebPDecoder
+import com.github.penfeizhou.animation.webp.io.WebPReader
+import com.github.penfeizhou.animation.webp.io.WebPWriter
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal class CustomWebPDrawable private constructor(loader: Loader) : FrameAnimationDrawable<WebPDecoder>(loader) {
-  private val _workerHandler by lazy {
-    FrameSeqDecoder::class.java.getDeclaredField("workerHandler")
-      .apply { isAccessible = true }
-      .let { it.get(frameSeqDecoder) as Handler }
-  }
-
-  private val _bitmapField by lazy {
-    FrameAnimationDrawable::class.java.getDeclaredField("bitmap")
-      .apply { isAccessible = true }
-  }
-
-  private val _mainHandler = Handler(Looper.getMainLooper())
+  private var _stopAtFirstFrame = AtomicBoolean(true)
 
   override fun createFrameSeqDecoder(streamLoader: Loader, listener: RenderListener?): WebPDecoder {
-    return WebPDecoder(streamLoader, listener)
+    return CustomWebPDecoder(streamLoader, listener)
   }
 
-  override fun setAutoPlay(autoPlay: Boolean) {
-    super.setAutoPlay(false)
+  fun stopAtFirstFrame() {
+    _stopAtFirstFrame.set(true)
+    super.start()
+  }
+
+  override fun start() {
+    _stopAtFirstFrame.set(false)
+    super.start()
   }
 
   override fun stop() {
-    val isRunning = isRunning
+    _stopAtFirstFrame.set(false)
     super.stop()
-    if (isRunning) {
-      _workerHandler.post {
-        val bitmap = frameSeqDecoder.getFrameBitmap(0)
-        if (bitmap != null) {
-          _bitmapField.set(this, bitmap)
-          _mainHandler.post { invalidateSelf() }
-        }
-      }
-    }
   }
 
   init {
     setAutoPlay(false)
+  }
+
+  private inner class CustomWebPDecoder(
+    loader: Loader,
+    listener: RenderListener?,
+  ) : WebPDecoder(loader, listener) {
+
+    override fun renderFrame(frame: Frame<WebPReader?, WebPWriter?>?) {
+      super.renderFrame(frame)
+      if (_stopAtFirstFrame.get() && frameIndex == 0) {
+        pause()
+      }
+    }
   }
 
   companion object {

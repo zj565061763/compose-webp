@@ -15,10 +15,7 @@ fun rememberWebpControllerWithResource(
   init: WebpController.() -> Unit = {},
 ): WebpController {
   return remember {
-    WebpControllerResource().apply {
-      startPlay()
-      init()
-    }
+    WebpControllerResource().apply(init)
   }.also { controller ->
     controller.resId = resId
     val context = LocalContext.current
