@@ -12,15 +12,16 @@ import com.github.penfeizhou.animation.webp.io.WebPWriter
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class CustomWebPDrawable private constructor(loader: Loader) : FrameAnimationDrawable<WebPDecoder>(loader) {
-  private var _stopAtFirstFrame = AtomicBoolean(true)
+  private var _stopAtFirstFrame = AtomicBoolean()
 
   override fun createFrameSeqDecoder(streamLoader: Loader, listener: RenderListener?): WebPDecoder {
     return CustomWebPDecoder(streamLoader, listener)
   }
 
   fun stopAtFirstFrame() {
-    _stopAtFirstFrame.set(true)
-    super.start()
+    if (_stopAtFirstFrame.compareAndSet(false, true)) {
+      super.start()
+    }
   }
 
   override fun start() {
