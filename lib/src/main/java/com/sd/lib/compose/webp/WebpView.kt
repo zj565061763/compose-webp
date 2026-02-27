@@ -17,7 +17,7 @@ fun WebpView(
 ) {
   WebpView(
     modifier = modifier,
-    controller = rememberWebpControllerWithResource(resId),
+    controller = rememberWebpControllerWithResource(resId) { startPlay() },
     contentDescription = contentDescription,
     contentScale = contentScale,
   )

@@ -4,10 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,12 +39,25 @@ class SampleActivity : ComponentActivity() {
 private fun Content(
   modifier: Modifier = Modifier,
 ) {
-  val controller = rememberWebpControllerWithResource(R.drawable.anim_ready)
+  val controller = rememberWebpControllerWithResource(R.drawable.anim_role_vertical_jump)
 
   Column(
-    modifier = modifier.fillMaxSize(),
+    modifier = modifier
+      .fillMaxSize()
+      .safeDrawingPadding()
+      .padding(16.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
+    WebpView(
+      modifier = Modifier
+        .size(100.dp)
+        .background(Color.Black),
+      resId = R.drawable.anim_role_star_jump,
+    )
+
+    HorizontalDivider()
+
     WebpView(
       modifier = Modifier
         .size(100.dp)
@@ -47,14 +65,15 @@ private fun Content(
       controller = controller,
     )
 
-    // 开始播放
-    Button(onClick = { controller.startPlay() }) {
-      Text(text = "start")
-    }
-
-    // 停止播放
-    Button(onClick = { controller.stopPlay() }) {
-      Text(text = "stop")
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+      // 开始播放
+      Button(onClick = { controller.startPlay() }) {
+        Text(text = "start")
+      }
+      // 停止播放
+      Button(onClick = { controller.stopPlay() }) {
+        Text(text = "stop")
+      }
     }
   }
 }
