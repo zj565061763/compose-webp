@@ -26,6 +26,7 @@ import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.RememberObserver
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,7 +44,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.roundToInt
 
 private val MAIN_HANDLER by lazy(LazyThreadSafetyMode.NONE) {
-    Handler(Looper.getMainLooper())
+  Handler(Looper.getMainLooper())
 }
 
 /**
@@ -52,98 +53,98 @@ private val MAIN_HANDLER by lazy(LazyThreadSafetyMode.NONE) {
  * Instances are usually retrieved from [rememberDrawablePainter].
  */
 internal class DrawablePainter(
-    public val drawable: Drawable
+  val drawable: Drawable,
 ) : Painter(), RememberObserver {
-    private var drawInvalidateTick by mutableStateOf(0)
-    private var drawableIntrinsicSize by mutableStateOf(drawable.intrinsicSize)
+  private var drawInvalidateTick by mutableIntStateOf(0)
+  private var drawableIntrinsicSize by mutableStateOf(drawable.intrinsicSize)
 
-    private val callback: Drawable.Callback by lazy {
-        object : Drawable.Callback {
-            override fun invalidateDrawable(d: Drawable) {
-                // Update the tick so that we get re-drawn
-                drawInvalidateTick++
-                // Update our intrinsic size too
-                drawableIntrinsicSize = drawable.intrinsicSize
-            }
+  private val callback: Drawable.Callback by lazy {
+    object : Drawable.Callback {
+      override fun invalidateDrawable(d: Drawable) {
+        // Update the tick so that we get re-drawn
+        drawInvalidateTick++
+        // Update our intrinsic size too
+        drawableIntrinsicSize = drawable.intrinsicSize
+      }
 
-            override fun scheduleDrawable(d: Drawable, what: Runnable, time: Long) {
-                MAIN_HANDLER.postAtTime(what, time)
-            }
+      override fun scheduleDrawable(d: Drawable, what: Runnable, time: Long) {
+        MAIN_HANDLER.postAtTime(what, time)
+      }
 
-            override fun unscheduleDrawable(d: Drawable, what: Runnable) {
-                MAIN_HANDLER.removeCallbacks(what)
-            }
+      override fun unscheduleDrawable(d: Drawable, what: Runnable) {
+        MAIN_HANDLER.removeCallbacks(what)
+      }
+    }
+  }
+
+  init {
+    if (drawable.intrinsicWidth >= 0 && drawable.intrinsicHeight >= 0) {
+      // Update the drawable's bounds to match the intrinsic size
+      drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
+    }
+  }
+
+  override fun onRemembered() {
+    drawable.callback = callback
+    drawable.setVisible(true, true)
+  }
+
+  override fun onAbandoned(): Unit = onForgotten()
+
+  override fun onForgotten() {
+    drawable.setVisible(false, false)
+    drawable.callback = null
+  }
+
+  override fun applyAlpha(alpha: Float): Boolean {
+    drawable.alpha = (alpha * 255).roundToInt().coerceIn(0, 255)
+    return true
+  }
+
+  override fun applyColorFilter(colorFilter: ColorFilter?): Boolean {
+    drawable.colorFilter = colorFilter?.asAndroidColorFilter()
+    return true
+  }
+
+  override fun applyLayoutDirection(layoutDirection: LayoutDirection): Boolean {
+    if (Build.VERSION.SDK_INT >= 23) {
+      return drawable.setLayoutDirection(
+        when (layoutDirection) {
+          LayoutDirection.Ltr -> View.LAYOUT_DIRECTION_LTR
+          LayoutDirection.Rtl -> View.LAYOUT_DIRECTION_RTL
         }
+      )
     }
+    return false
+  }
 
-    init {
-        if (drawable.intrinsicWidth >= 0 && drawable.intrinsicHeight >= 0) {
-            // Update the drawable's bounds to match the intrinsic size
-            drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
+  override val intrinsicSize: Size get() = drawableIntrinsicSize
+
+  override fun DrawScope.onDraw() {
+    drawIntoCanvas { canvas ->
+      // Reading this ensures that we invalidate when invalidateDrawable() is called
+      drawInvalidateTick
+
+      canvas.withSave {
+        // AnimatedImageDrawable is not respecting the bounds below Android 12, so this is
+        // a workaround to make the render size correct in this specific case
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+          Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
+          drawable is AnimatedImageDrawable
+        ) {
+          canvas.scale(
+            size.width / intrinsicSize.width,
+            size.height / intrinsicSize.height
+          )
+        } else {
+          // Update the Drawable's bounds
+          drawable.setBounds(0, 0, size.width.roundToInt(), size.height.roundToInt())
         }
+
+        drawable.draw(canvas.nativeCanvas)
+      }
     }
-
-    override fun onRemembered() {
-        drawable.callback = callback
-        drawable.setVisible(true, true)
-    }
-
-    override fun onAbandoned(): Unit = onForgotten()
-
-    override fun onForgotten() {
-        drawable.setVisible(false, false)
-        drawable.callback = null
-    }
-
-    override fun applyAlpha(alpha: Float): Boolean {
-        drawable.alpha = (alpha * 255).roundToInt().coerceIn(0, 255)
-        return true
-    }
-
-    override fun applyColorFilter(colorFilter: ColorFilter?): Boolean {
-        drawable.colorFilter = colorFilter?.asAndroidColorFilter()
-        return true
-    }
-
-    override fun applyLayoutDirection(layoutDirection: LayoutDirection): Boolean {
-        if (Build.VERSION.SDK_INT >= 23) {
-            return drawable.setLayoutDirection(
-                when (layoutDirection) {
-                    LayoutDirection.Ltr -> View.LAYOUT_DIRECTION_LTR
-                    LayoutDirection.Rtl -> View.LAYOUT_DIRECTION_RTL
-                }
-            )
-        }
-        return false
-    }
-
-    override val intrinsicSize: Size get() = drawableIntrinsicSize
-
-    override fun DrawScope.onDraw() {
-        drawIntoCanvas { canvas ->
-            // Reading this ensures that we invalidate when invalidateDrawable() is called
-            drawInvalidateTick
-
-            canvas.withSave {
-                // AnimatedImageDrawable is not respecting the bounds below Android 12, so this is
-                // a workaround to make the render size correct in this specific case
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
-                    Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
-                    drawable is AnimatedImageDrawable
-                ) {
-                    canvas.scale(
-                        size.width / intrinsicSize.width,
-                        size.height / intrinsicSize.height
-                    )
-                } else {
-                    // Update the Drawable's bounds
-                    drawable.setBounds(0, 0, size.width.roundToInt(), size.height.roundToInt())
-                }
-
-                drawable.draw(canvas.nativeCanvas)
-            }
-        }
-    }
+  }
 }
 
 /**
@@ -154,30 +155,28 @@ internal class DrawablePainter(
  *
  * This function tries to dispatch lifecycle events to [drawable] as much as possible from
  * within Compose.
- *
- * @sample com.google.accompanist.sample.drawablepainter.BasicSample
  */
 @Composable
 internal fun rememberDrawablePainter(drawable: Drawable?): Painter = remember(drawable) {
-    when (drawable) {
-        null -> EmptyPainter
-        is ColorDrawable -> ColorPainter(Color(drawable.color))
-        // Since the DrawablePainter will be remembered and it implements RememberObserver, it
-        // will receive the necessary events
-        else -> DrawablePainter(drawable.mutate())
-    }
+  when (drawable) {
+    null -> EmptyPainter
+    is ColorDrawable -> ColorPainter(Color(drawable.color))
+    // Since the DrawablePainter will be remembered, and it implements RememberObserver, it
+    // will receive the necessary events
+    else -> DrawablePainter(drawable.mutate())
+  }
 }
 
 private val Drawable.intrinsicSize: Size
-    get() = when {
-        // Only return a finite size if the drawable has an intrinsic size
-        intrinsicWidth >= 0 && intrinsicHeight >= 0 -> {
-            Size(width = intrinsicWidth.toFloat(), height = intrinsicHeight.toFloat())
-        }
-        else -> Size.Unspecified
+  get() = when {
+    // Only return a finite size if the drawable has an intrinsic size
+    intrinsicWidth >= 0 && intrinsicHeight >= 0 -> {
+      Size(width = intrinsicWidth.toFloat(), height = intrinsicHeight.toFloat())
     }
+    else -> Size.Unspecified
+  }
 
 internal object EmptyPainter : Painter() {
-    override val intrinsicSize: Size get() = Size.Unspecified
-    override fun DrawScope.onDraw() {}
+  override val intrinsicSize: Size get() = Size.Unspecified
+  override fun DrawScope.onDraw() {}
 }
