@@ -43,14 +43,10 @@ import androidx.compose.ui.graphics.withSave
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.roundToInt
 
-private val MAIN_HANDLER by lazy(LazyThreadSafetyMode.NONE) {
-  Handler(Looper.getMainLooper())
-}
-
 /**
  * A [Painter] which draws an Android [Drawable].
  *
- * Instances are usually retrieved from [rememberDrawablePainter].
+ * Instances are usually retrieved from [drawablePainter].
  */
 internal class DrawablePainter(
   val drawable: Drawable,
@@ -58,6 +54,7 @@ internal class DrawablePainter(
   private var drawInvalidateTick by mutableIntStateOf(0)
   private var drawableIntrinsicSize by mutableStateOf(drawable.intrinsicSize)
 
+  private val mainHandler = Handler(Looper.getMainLooper())
   private val callback: Drawable.Callback by lazy {
     object : Drawable.Callback {
       override fun invalidateDrawable(d: Drawable) {
@@ -68,11 +65,11 @@ internal class DrawablePainter(
       }
 
       override fun scheduleDrawable(d: Drawable, what: Runnable, time: Long) {
-        MAIN_HANDLER.postAtTime(what, time)
+        mainHandler.postAtTime(what, time)
       }
 
       override fun unscheduleDrawable(d: Drawable, what: Runnable) {
-        MAIN_HANDLER.removeCallbacks(what)
+        mainHandler.removeCallbacks(what)
       }
     }
   }
@@ -157,7 +154,7 @@ internal class DrawablePainter(
  * within Compose.
  */
 @Composable
-internal fun rememberDrawablePainter(drawable: Drawable?): Painter = remember(drawable) {
+internal fun drawablePainter(drawable: Drawable?): Painter = remember(drawable) {
   when (drawable) {
     null -> EmptyPainter
     is ColorDrawable -> ColorPainter(Color(drawable.color))

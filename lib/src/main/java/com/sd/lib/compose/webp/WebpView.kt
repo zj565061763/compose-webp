@@ -46,7 +46,7 @@ fun WebpView(
 
   Image(
     modifier = modifier,
-    painter = rememberDrawablePainter(controller.getDrawable()),
+    painter = drawablePainter(controller.getDrawable()),
     contentDescription = contentDescription,
     contentScale = contentScale,
   )
