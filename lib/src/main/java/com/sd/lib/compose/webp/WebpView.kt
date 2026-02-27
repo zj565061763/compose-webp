@@ -11,6 +11,21 @@ import androidx.compose.ui.res.painterResource
 @Composable
 fun WebpView(
   modifier: Modifier = Modifier,
+  @DrawableRes resId: Int,
+  contentDescription: String? = null,
+  contentScale: ContentScale = ContentScale.Fit,
+) {
+  WebpView(
+    modifier = modifier,
+    controller = rememberWebpControllerWithResource(resId),
+    contentDescription = contentDescription,
+    contentScale = contentScale,
+  )
+}
+
+@Composable
+fun WebpView(
+  modifier: Modifier = Modifier,
   controller: WebpController,
   contentDescription: String? = null,
   contentScale: ContentScale = ContentScale.Fit,
